@@ -56,11 +56,6 @@ pre_config(){
         echo -e "${RED}ERROR: $GEOLITE NOT FOUND in ~/${NC}"
     fi
 
-    if [ -f ~/index.html ]; then
-        yes | cp -rp ~/index.html $SCRIPT_DIR
-    else
-        echo -e "${RED}ERROR: index.html NOT FOUND in ~/${NC}"
-    fi
 }
 
 
@@ -88,9 +83,6 @@ download_payara(){
 install_payara(){  
     echo -e "${YELLOW}Install Payara $PAYARA_VERSION...${NC}"  
     read -n 1 -s -r -p "Press any key to continue"
-    
-    rm -rf /usr/local/payara5/glassfish/domains/domain1/docroot/index.html
-    cp $SCRIPT_DIR/index.html /usr/local/payara5/glassfish/domains/domain1/docroot/
 
     chown -R root:root /usr/local/payara5
     chown dataverse /usr/local/payara5/glassfish/lib
