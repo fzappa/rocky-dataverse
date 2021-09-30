@@ -1,9 +1,17 @@
-#!/bin/bash
+#!/usr/bin/env bash
+#
+# Install Dataverse on Rocky Linux
+#
+# Alan Franco
+# github.com/fzappa/rocky-dataverse
+#
+# License: GPL-3.0
+#
 # Based on https://guides.dataverse.org/en/5.5/installation/prerequisites.html
-
-
+#
 
 ####### CHANGE ME ##########
+SCRIPT_DIR="/opt/rocky-dataverse"
 DATAVERSE_VERSION="5.5"
 #DATAVERSE_VERSION="5.6"
 PAYARA_VERSION="5.2020.6" 
@@ -34,14 +42,6 @@ YELLOW='\e[1;33m'
 NC='\e[0m' # No Color
 
 
-echo -e "${REDB}INSTALL DATAVERSE v$DATAVERSE_VERSION ${NC}"
-
-if [[ $EUID -ne 0 ]]; then
-    echo -e "${REDB}ERROR: Run the script as ROOT!${NC}"
-    exit
-fi
-
-
 pre_config(){
     echo -e "${YELLOW}Pre config..."
     read -n 1 -s -r -p "Press any key to continue"
@@ -54,6 +54,9 @@ pre_config(){
         yes | cp -rp ~/$GEOLITE $SCRIPT_DIR
     else
         echo -e "${RED}ERROR: $GEOLITE NOT FOUND in ~/${NC}"
+        echo -e "${YELLOW}Please create an account and download at:${NC}" 
+        echo -e "${YELLOW}https://dev.maxmind.com/geoip/geolite2-free-geolocation-data?lang=en${NC}"
+        exit 
     fi
 
 }
@@ -242,28 +245,36 @@ install_dataverse(){
 }
 
 main(){
-    pre_config
-    install_java
-    download_payara
-    install_payara
-    install_postgresql
-    configure_postgresql
-    download_dataverse
-    install_solr
-    install_magick
-    install_r
-    install_maxmind
-    install_dataverse
+
+    echo -e "${REDB}INSTALL DATAVERSE v$DATAVERSE_VERSION ${NC}"
+
+    if [[ $EUID -ne 0 ]]; then
+        echo -e "${REDB}ERROR: Run the script as ROOT!${NC}"
+        exit
+    else
+        pre_config
+        install_java
+        download_payara
+        install_payara
+        install_postgresql
+        configure_postgresql
+        download_dataverse
+        install_solr
+        install_magick
+        install_r
+        install_maxmind
+        install_dataverse
     
-    echo -e "${REDB}POST INSTALL TIPS${NC}"
-    echo -e "${GREEN}CHECK: vim /usr/local/payara5/glassfish/domains/domain1/config/domain.xml${NC}"
-    echo -e "${GREEN}CHECK: <jvm-options>-client</jvm-options> to <jvm-options>-server</jvm-options>${NC}"
-    echo " "
-    echo -e "${GREEN}EDIT: /usr/local/solr/solr-$SOLR_VERSION/server/etc/jetty.xml${NC}"
-    echo -e "${GREEN}Increasing requestHeaderSize from 8192 to 102400${NC}"
-    echo " "
-    echo -e "${GREEN}EDIT SECURITY: In /var/lib/pgsql/data/pg_hba.conf change line to:${NC}"
-    echo -e "${GREEN}host     all    all    127.0.0.1/32    md5${NC}"
+        echo -e "${REDB}POST INSTALL TIPS${NC}"
+        echo -e "${GREEN}CHECK: vim /usr/local/payara5/glassfish/domains/domain1/config/domain.xml${NC}"
+        echo -e "${GREEN}CHECK: <jvm-options>-client</jvm-options> to <jvm-options>-server</jvm-options>${NC}"
+        echo " "
+        echo -e "${GREEN}EDIT: /usr/local/solr/solr-$SOLR_VERSION/server/etc/jetty.xml${NC}"
+        echo -e "${GREEN}Increasing requestHeaderSize from 8192 to 102400${NC}"
+        echo " "
+        echo -e "${GREEN}EDIT SECURITY: In /var/lib/pgsql/data/pg_hba.conf change line to:${NC}"
+        echo -e "${GREEN}host     all    all    127.0.0.1/32    md5${NC}"
+    fi
 }
 
 main
