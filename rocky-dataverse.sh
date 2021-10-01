@@ -11,6 +11,7 @@
 #
 
 ####### CHANGE ME ##########
+INSTITUTE="Meu Instituto"
 EMAIL="user@domain.org"
 PROJECT_NAME="RedeDadosAbertos"
 SCRIPT_DIR="/opt/rocky-dataverse"
@@ -22,8 +23,14 @@ JAVA_VERSION="11"
 POSTGRESQL_VERSION="13"
 SOLR_VERSION="8.8.1"
 
+BUILD_IMAGEMAGICK="YES"
+BUILD_R="YES"
+
+# If do you want to install Maxmind
 # Create an account and download at: https://dev.maxmind.com/geoip/geolite2-free-geolocation-data?lang=en
-GEOLITE="GeoLite2-Country_20210921.tar.gz"
+BUILD_MAXMIND="YES"
+GEOLITE_PACKAGE="GeoLite2-Country.tar.gz"
+
 
 # Change according to version
 # V5.5 V5.6
@@ -45,28 +52,30 @@ NC='\e[0m' # No Color
 
 
 pre_config(){
-    echo -e "${YELLOW}Pre config..."
-    read -n 1 -s -r -p "Press any key to continue"
+    echo -e "${YELLOW}Pre config...${NC}"
+    read_any
     if [ ! -d $SCRIPT_DIR ]; then
         mkdir $SCRIPT_DIR         
         yes | cp -rp ~/datverse_rocky.sh $SCRIPT_DIR        
     fi
 
-    if [ -f ~/$GEOLITE ]; then
-        yes | cp -rp ~/$GEOLITE $SCRIPT_DIR
-    else
-        echo -e "${RED}ERROR: $GEOLITE NOT FOUND in ~/${NC}"
-        echo -e "${YELLOW}Please create an account and download at:${NC}" 
-        echo -e "${YELLOW}https://dev.maxmind.com/geoip/geolite2-free-geolocation-data?lang=en${NC}"
-        exit 
+    if [[ $BUILD_MAXMIND == "YES" ]]; then
+        if [ -f ~/$GEOLITE_PACKAGE ]; then
+            yes | cp -rp ~/$GEOLITE_PACKAGE $SCRIPT_DIR
+        else
+            echo -e "${RED}ERROR: $GEOLITE_PACKAGE NOT FOUND in ~/${NC}"
+            echo -e "${YELLOW}Please create an account and download at:${NC}" 
+            echo -e "${YELLOW}https://dev.maxmind.com/geoip/geolite2-free-geolocation-data?lang=en${NC}"
+            echo -e "${YELLOW}or set BUILD_MAXMIND var to NO.${NC}" 
+            exit 
+        fi
     fi
-
 }
 
 
 install_java(){
     echo -e "${YELLOW}Install Java $JAVA_VERSION...${NC}"
-    read -n 1 -s -r -p "Press any key to continue"
+    read_any
     dnf install -y java-$JAVA_VERSION-openjdk
     alternatives --set java java-$JAVA_VERSION-openjdk.x86_64
 }
@@ -74,7 +83,7 @@ install_java(){
 
 download_payara(){
     echo -e "${YELLOW}Download Payara $PAYARA_VERSION...${NC}"
-    read -n 1 -s -r -p "Press any key to continue"
+    read_any
     useradd dataverse
     usermod -aG sudo dataverse
     
@@ -87,7 +96,7 @@ download_payara(){
 
 install_payara(){  
     echo -e "${YELLOW}Install Payara $PAYARA_VERSION...${NC}"  
-    read -n 1 -s -r -p "Press any key to continue"
+    read_any
 
     chown -R root:root /usr/local/payara5
     chown dataverse /usr/local/payara5/glassfish/lib
@@ -104,7 +113,7 @@ install_payara(){
 
 install_postgresql(){
     echo -e "${YELLOW}Install Postgresql $POSTGRESQL_VERSION...${NC}"
-    read -n 1 -s -r -p "Press any key to continue"
+    read_any
     #dnf module list postgresql
     dnf module reset postgresql
     dnf module install -y postgresql:$POSTGRESQL_VERSION
@@ -115,7 +124,7 @@ install_postgresql(){
 
 configure_postgresql(){
     echo -e "${YELLOW}Configure Postgresql $POSTGRESQL_VERSION...${NC}"
-    read -n 1 -s -r -p "Press any key to continue"
+    read_any
     # vim /var/lib/pgsql/data/pg_hba.conf
     echo "local    all    all    trust" > /var/lib/pgsql/data/pg_hba.conf
     echo "host     all    all    127.0.0.1/32    trust" >> /var/lib/pgsql/data/pg_hba.conf
@@ -131,7 +140,7 @@ configure_postgresql(){
 
 download_dataverse(){
     echo -e "${YELLOW}Download Dataverse v$DATAVERSE_VERSION...${NC}"
-    read -n 1 -s -r -p "Press any key to continue"
+    read_any
     cd $SCRIPT_DIR
     wget https://github.com/IQSS/dataverse/releases/download/v$DATAVERSE_VERSION/dvinstall.zip
     unzip dvinstall.zip
@@ -140,7 +149,7 @@ download_dataverse(){
 
 install_solr(){
     echo -e "${YELLOW}Install SOLR $SOLR_VERSION...${NC}"
-    read -n 1 -s -r -p "Press any key to continue"
+    read_any
 
     cd $SCRIPT_DIR
     useradd solr
@@ -177,7 +186,7 @@ install_solr(){
 
 install_magick(){
     echo -e "${YELLOW}Install ImageMagick...${NC}"
-    read -n 1 -s -r -p "Press any key to continue"
+    read_any
     dnf install -y epel-release
     dnf install -y jq
     dnf install -y ImageMagick
@@ -186,7 +195,7 @@ install_magick(){
 
 install_r(){
     echo -e "${YELLOW}Install R...${NC}"
-    read -n 1 -s -r -p "Press any key to continue"
+    read_any
 
     dnf config-manager --enable powertools
     dnf install -y R-core R-core-devel
@@ -197,7 +206,7 @@ install_r(){
     Rscript -e 'install.packages("DescTools", repos="https://cran.fiocruz.br/", lib="/usr/lib64/R/library")'
     Rscript -e 'install.packages("Rserve", repos="https://cran.fiocruz.br/", lib="/usr/lib64/R/library")'
     Rscript -e 'install.packages("haven", repos="https://cran.fiocruz.br/", lib="/usr/lib64/R/library")'
-    mount -o remount,noexec /tmp
+    mount -o remount,rw,noexec,nosuid,nodev,bind /tmp
 
     cd $SCRIPT_DIR
     git clone -b master https://github.com/IQSS/dataverse.git
@@ -210,7 +219,7 @@ install_r(){
 
 install_maxmind(){
     echo -e "${YELLOW}Install MAXMIND...${NC}"
-    read -n 1 -s -r -p "Press any key to continue"
+    read_any
 
     cd /usr/local
     wget https://github.com/CDLUC3/counter-processor/archive/v0.0.1.tar.gz
@@ -219,7 +228,7 @@ install_maxmind(){
     cd /usr/local/counter-processor-0.0.1
 
     cd $SCRIPT_DIR
-    tar xvfz $GEOLITE
+    tar xvfz $GEOLITE_PACKAGE
     cp GeoLite2-Country_*/GeoLite2-Country.mmdb /usr/local/counter-processor-0.0.1/maxmind_geoip
 
     useradd counter
@@ -234,7 +243,7 @@ install_maxmind(){
 
 install_dataverse(){
     echo -e "${YELLOW}Install DATAVERSE $DATAVERSE_VERSION...${NC}"
-    read -n 1 -s -r -p "Press any key to continue"
+    read_any
     cd $SCRIPT_DIR/dvinstall/
     dnf install -y python3-psycopg2
     sudo -u dataverse python3 install.py
@@ -247,20 +256,35 @@ install_dataverse(){
 }
 
 configure_dataverse(){
-    echo -e "${YELLOW}Configure DATAVERSE $DATAVERSE_VERSION for tests...${NC}"
-    read -n 1 -s -r -p "Press any key to continue"
+    echo -e "${YELLOW}Configure DATAVERSE $DATAVERSE_VERSION for tests...\n${NC}"
+    read_any
+    echo ""
     
     curl http://localhost:8080/api/admin/settings/:DoiProvider -X PUT -d FAKE
-    curl -X PUT -d '$PROJECT_NAME <$EMAIL>' http://localhost:8080/api/admin/settings/:SystemEmail
+    curl -X PUT -d "$PROJECT_NAME <$EMAIL>" http://localhost:8080/api/admin/settings/:SystemEmail
+    curl -X PUT -d ", $INSTITUTE" http://localhost:8080/api/admin/settings/:FooterCopyright
 
 }
 
+configure_selinux(){
+    echo -e "${YELLOW}Enable AVC rules in SELinux for Apache and NGINX...${NC}"
+    setsebool -P httpd_can_network_connect 1
+    setsebool -P httpd_can_network_relay 1
+    setsebool -P httpd_run_stickshift 1
+    setsebool -P httpd_setrlimit 1
+}
+
+read_any(){
+    read -n 1 -s -r -p "Press any key to continue..."$'\n' msg
+}
+
+
 main(){
 
-    echo -e "${REDB}INSTALL DATAVERSE v$DATAVERSE_VERSION ${NC}"
+    echo -e "${REDB}\n\nINSTALL DATAVERSE v$DATAVERSE_VERSION ${NC}"
 
     if [[ $EUID -ne 0 ]]; then
-        echo -e "${REDB}ERROR: Run the script as ROOT!${NC}"
+        echo -e "${REDB}ERROR: Run the script as ROOT!\n${NC}"
         exit
     else
         pre_config
@@ -271,13 +295,21 @@ main(){
         configure_postgresql
         download_dataverse
         install_solr
-        install_magick
-        install_r
-        install_maxmind
+        if [[ $BUILD_IMAGEMAGICK == "YES" ]]; then
+            install_magick
+        fi
+        if [[ $BUILD_R == "YES" ]]; then
+            install_r
+        fi
+        if [[ $BUILD_MAXMIND == "YES" ]]; then
+            install_maxmind
+        fi
         install_dataverse
         configure_dataverse
+        configure_selinux
+
     
-        echo -e "${REDB}POST INSTALL TIPS${NC}"
+        echo -e "${REDB}\n\nPOST INSTALL TIPS${NC}"
         echo -e "${GREEN}CHECK: vim /usr/local/payara5/glassfish/domains/domain1/config/domain.xml${NC}"
         echo -e "${GREEN}CHECK: <jvm-options>-client</jvm-options> to <jvm-options>-server</jvm-options>${NC}"
         echo " "
@@ -285,7 +317,13 @@ main(){
         echo -e "${GREEN}Increasing requestHeaderSize from 8192 to 102400${NC}"
         echo " "
         echo -e "${GREEN}EDIT SECURITY: In /var/lib/pgsql/data/pg_hba.conf change line to:${NC}"
-        echo -e "${GREEN}host     all    all    127.0.0.1/32    md5${NC}"
+        echo -e "${GREEN}host     all    all    127.0.0.1/32    md5\n${NC}"
+        echo " "
+        echo -e "${GREEN}RECOMENDED: Check SELinux rules with audit2allow -a${NC}"
+        echo -e "${GREEN}Create test modules with \"audit2allow -a -M module_name\"${NC}"
+        echo -e "${GREEN}Install modules with \"semodule -i module_name.te\"${NC}"
+        echo -e "${GREEN}Enable with \"semodule -e module_name\"${NC}"
+
     fi
 }
 
