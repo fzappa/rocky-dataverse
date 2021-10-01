@@ -23,15 +23,23 @@ JAVA_VERSION="11"
 POSTGRESQL_VERSION="13"
 SOLR_VERSION="8.8.1"
 
+# DOI CONFIGURE
+USE_FAKE_DOI="YES"
+
+# EDIT IF USE_FAKE_DOI="NO"
+DOI_PREFIX="10.5072"
+DOI_USERNAME="username"
+DOI_PASSWD="password"
+
 BUILD_IMAGEMAGICK="YES"
 BUILD_R="YES"
+CHANGE_PAYARA_INDEX="NO"
 
 # If do you want to install Maxmind
 # Create an account and download at: https://dev.maxmind.com/geoip/geolite2-free-geolocation-data?lang=en
 BUILD_MAXMIND="YES"
 GEOLITE_PACKAGE="GeoLite2-Country.tar.gz"
 
-CHANGE_PAYARA_INDEX="NO"
 
 # Change according to version
 # V5.5 V5.6
@@ -57,7 +65,7 @@ pre_config(){
     read_any
     if [ ! -d $SCRIPT_DIR ]; then
         mkdir $SCRIPT_DIR         
-        yes | cp -rp ~/datverse_rocky.sh $SCRIPT_DIR        
+        yes | cp -rp ~/rocky-dataverse.sh $SCRIPT_DIR        
     fi
 
     if [[ $BUILD_MAXMIND == "YES" ]]; then
@@ -117,6 +125,7 @@ install_payara(){
     echo -e "${GREEN}Start and enable Payara service...${NC}"
     systemctl daemon-reload
     systemctl enable --now payara.service
+    rm -rf $SCRIPT_DIR/payara-$PAYARA_VERSION.zip
 }
 
 change_index_payara(){
@@ -126,6 +135,8 @@ change_index_payara(){
     # Just to not show payara's default page during dataverse startup
     rm -rf /usr/local/payara5/glassfish/domains/domain1/docroot/index.html
     cp $SCRIPT_DIR/index.html /usr/local/payara5/glassfish/domains/domain1/docroot/
+    chown dataverse.dataverse /usr/local/payara5/glassfish/domains/domain1/docroot/index.html
+    chmod 755 /usr/local/payara5/glassfish/domains/domain1/docroot/index.html
 }
 
 
@@ -191,6 +202,7 @@ install_solr(){
     dnf install -y lsof
 
     sudo -u solr echo "name=collection1" > /usr/local/solr/solr-$SOLR_VERSION/server/solr/collection1/core.properties
+    sudo -u solr sed -i "s/name=\"solr.jetty.request.header.size\" default=\"8192\"/name=\"solr.jetty.request.header.size\" default=\"102400\"/g" /usr/local/solr/solr-$SOLR_VERSION/server/etc/jetty.xml
 
     cd /etc/systemd/system
     wget $SOLR_SERVICE
@@ -199,6 +211,7 @@ install_solr(){
     echo -e "${GREEN}Start and enable SOLR service...${NC}"
     systemctl enable --now solr.service
     usermod -s /sbin/nologin solr
+    rm -rf /usr/local/solr/solr-$SOLR_VERSION.tgz
 }
 
 
@@ -273,12 +286,36 @@ install_dataverse(){
     chown root /usr/local/payara5/glassfish/lib
 }
 
+configure_fake_doi(){
+    # https://brapci.inf.br/wiki/index.php/Dataverse:DOI
+    echo -e "${YELLOW}Configure FAKE DOI for tests...\n${NC}"
+    read_any
+
+    curl http://localhost:8080/api/admin/settings/:DoiProvider -X PUT -d FAKE
+}
+
+configure_regular_doi(){
+    # https://brapci.inf.br/wiki/index.php/Dataverse:DOI
+    echo -e "${YELLOW}Configure Regular DOI...\n${NC}"
+    read_any
+
+    sed -i "s/Ddoi.username=dataciteuser/Ddoi.username=$DOI_USERNAME/g" /usr/local/payara5/glassfish/domains/domain1/config/domain.xml
+    sed -i "s/Ddoi.password=\${ALIAS=doi_password_alias}/Ddoi.password=$DOI_PASSWD/g" /usr/local/payara5/glassfish/domains/domain1/config/domain.xml
+
+    curl -X PUT -d "$DOI_PREFIX" localhost:8080/api/admin/settings/:Authority
+}
+
 configure_dataverse(){
     echo -e "${YELLOW}Configure DATAVERSE $DATAVERSE_VERSION for tests...\n${NC}"
     read_any
-    echo ""
+
     
-    curl http://localhost:8080/api/admin/settings/:DoiProvider -X PUT -d FAKE
+    if [[ $USE_FAKE_DOI == "YES" ]]; then
+        configure_fake_doi
+    else
+        configure_regular_doi
+    fi
+    
     curl -X PUT -d "$PROJECT_NAME <$EMAIL>" http://localhost:8080/api/admin/settings/:SystemEmail
     curl -X PUT -d ", $INSTITUTE" http://localhost:8080/api/admin/settings/:FooterCopyright
 
@@ -331,16 +368,11 @@ main(){
             change_index_payara
         fi
 
+        # Restore Postgresql security
+        sed -i '2s/trust/md5/' /var/lib/pgsql/data/pg_hba.conf
+
     
         echo -e "${REDB}\n\nPOST INSTALL TIPS${NC}"
-        echo -e "${GREEN}CHECK: vim /usr/local/payara5/glassfish/domains/domain1/config/domain.xml${NC}"
-        echo -e "${GREEN}CHECK: <jvm-options>-client</jvm-options> to <jvm-options>-server</jvm-options>${NC}"
-        echo " "
-        echo -e "${GREEN}EDIT: /usr/local/solr/solr-$SOLR_VERSION/server/etc/jetty.xml${NC}"
-        echo -e "${GREEN}Increasing requestHeaderSize from 8192 to 102400${NC}"
-        echo " "
-        echo -e "${GREEN}EDIT SECURITY: In /var/lib/pgsql/data/pg_hba.conf change line to:${NC}"
-        echo -e "${GREEN}host     all    all    127.0.0.1/32    md5\n${NC}"
         echo " "
         echo -e "${GREEN}RECOMENDED: Check SELinux rules with audit2allow -a${NC}"
         echo -e "${GREEN}Create test modules with \"audit2allow -a -M module_name\"${NC}"
