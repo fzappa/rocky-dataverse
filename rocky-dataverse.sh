@@ -31,6 +31,7 @@ BUILD_R="YES"
 BUILD_MAXMIND="YES"
 GEOLITE_PACKAGE="GeoLite2-Country.tar.gz"
 
+CHANGE_PAYARA_INDEX="NO"
 
 # Change according to version
 # V5.5 V5.6
@@ -68,6 +69,14 @@ pre_config(){
             echo -e "${YELLOW}https://dev.maxmind.com/geoip/geolite2-free-geolocation-data?lang=en${NC}"
             echo -e "${YELLOW}or set BUILD_MAXMIND var to NO.${NC}" 
             exit 
+        fi
+    fi
+
+    if [[ $CHANGE_PAYARA_INDEX == "YES" ]]; then
+        if [ -f ~/index.html ]; then
+            yes | cp -rp ~/index.html $SCRIPT_DIR
+        else
+            echo -e "${RED}ERROR: index.html NOT FOUND in ~/${NC}"
         fi
     fi
 }
@@ -108,6 +117,15 @@ install_payara(){
     echo -e "${GREEN}Start and enable Payara service...${NC}"
     systemctl daemon-reload
     systemctl enable --now payara.service
+}
+
+change_index_payara(){
+    echo -e "${YELLOW}Change Payara's default index page...${NC}"  
+    read_any
+
+    # Just to not show payara's default page during dataverse startup
+    rm -rf /usr/local/payara5/glassfish/domains/domain1/docroot/index.html
+    cp $SCRIPT_DIR/index.html /usr/local/payara5/glassfish/domains/domain1/docroot/
 }
 
 
@@ -268,6 +286,8 @@ configure_dataverse(){
 
 configure_selinux(){
     echo -e "${YELLOW}Enable AVC rules in SELinux for Apache and NGINX...${NC}"
+    read_any
+
     setsebool -P httpd_can_network_connect 1
     setsebool -P httpd_can_network_relay 1
     setsebool -P httpd_run_stickshift 1
@@ -307,6 +327,9 @@ main(){
         install_dataverse
         configure_dataverse
         configure_selinux
+        if [[ $CHANGE_PAYARA_INDEX == "YES" ]]; then
+            change_index_payara
+        fi
 
     
         echo -e "${REDB}\n\nPOST INSTALL TIPS${NC}"
