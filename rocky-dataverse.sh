@@ -11,6 +11,8 @@
 #
 
 ####### CHANGE ME ##########
+EMAIL="user@domain.org"
+PROJECT_NAME="RedeDadosAbertos"
 SCRIPT_DIR="/opt/rocky-dataverse"
 DATAVERSE_VERSION="5.5"
 #DATAVERSE_VERSION="5.6"
@@ -244,6 +246,15 @@ install_dataverse(){
     chown root /usr/local/payara5/glassfish/lib
 }
 
+configure_dataverse(){
+    echo -e "${YELLOW}Configure DATAVERSE $DATAVERSE_VERSION for tests...${NC}"
+    read -n 1 -s -r -p "Press any key to continue"
+    
+    curl http://localhost:8080/api/admin/settings/:DoiProvider -X PUT -d FAKE
+    curl -X PUT -d '$PROJECT_NAME <$EMAIL>' http://localhost:8080/api/admin/settings/:SystemEmail
+
+}
+
 main(){
 
     echo -e "${REDB}INSTALL DATAVERSE v$DATAVERSE_VERSION ${NC}"
@@ -264,6 +275,7 @@ main(){
         install_r
         install_maxmind
         install_dataverse
+        configure_dataverse
     
         echo -e "${REDB}POST INSTALL TIPS${NC}"
         echo -e "${GREEN}CHECK: vim /usr/local/payara5/glassfish/domains/domain1/config/domain.xml${NC}"
