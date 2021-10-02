@@ -11,7 +11,7 @@
 #
 
 ####### CHANGE ME ##########
-INSTITUTE="Meu Instituto"
+INSTITUTE="My Institute"
 EMAIL="user@domain.org"
 PROJECT_NAME="RedeDadosAbertos"
 SCRIPT_DIR="/opt/rocky-dataverse"
@@ -35,7 +35,7 @@ BUILD_IMAGEMAGICK="YES"
 BUILD_R="YES"
 CHANGE_PAYARA_INDEX="NO"
 
-# If do you want to install Maxmind
+# If you want to install Maxmind
 # Create an account and download at: https://dev.maxmind.com/geoip/geolite2-free-geolocation-data?lang=en
 BUILD_MAXMIND="YES"
 GEOLITE_PACKAGE="GeoLite2-Country.tar.gz"
@@ -232,11 +232,11 @@ install_r(){
     dnf install -y R-core R-core-devel
 
     mount -o remount,exec /tmp
-    Rscript -e 'install.packages("R2HTML", repos="https://cran.fiocruz.br/", lib="/usr/lib64/R/library")'
-    Rscript -e 'install.packages("rjson", repos="https://cran.fiocruz.br/", lib="/usr/lib64/R/library")'
-    Rscript -e 'install.packages("DescTools", repos="https://cran.fiocruz.br/", lib="/usr/lib64/R/library")'
-    Rscript -e 'install.packages("Rserve", repos="https://cran.fiocruz.br/", lib="/usr/lib64/R/library")'
-    Rscript -e 'install.packages("haven", repos="https://cran.fiocruz.br/", lib="/usr/lib64/R/library")'
+    Rscript -e 'install.packages("R2HTML", repos="https://cloud.r-project.org/", lib="/usr/lib64/R/library")'
+    Rscript -e 'install.packages("rjson", repos="https://cloud.r-project.org/", lib="/usr/lib64/R/library")'
+    Rscript -e 'install.packages("DescTools", repos="https://cloud.r-project.org/", lib="/usr/lib64/R/library")'
+    Rscript -e 'install.packages("Rserve", repos="https://cloud.r-project.org/", lib="/usr/lib64/R/library")'
+    Rscript -e 'install.packages("haven", repos="https://cloud.r-project.org/", lib="/usr/lib64/R/library")'
     mount -o remount,rw,noexec,nosuid,nodev,bind /tmp
 
     cd $SCRIPT_DIR
