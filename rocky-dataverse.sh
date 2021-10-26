@@ -16,12 +16,10 @@ EMAIL="user@domain.org"
 PROJECT_NAME="RedeDadosAbertos"
 SCRIPT_DIR="/opt/rocky-dataverse"
 DATAVERSE_VERSION="5.5"
-#DATAVERSE_VERSION="5.6"
-PAYARA_VERSION="5.2020.6" 
-#PAYARA_VERSION="5.2021.5" # V5.6
 JAVA_VERSION="11"
 POSTGRESQL_VERSION="13"
 SOLR_VERSION="8.8.1"
+
 
 # DOI CONFIGURE
 USE_FAKE_DOI="YES"
@@ -35,6 +33,10 @@ BUILD_IMAGEMAGICK="YES"
 BUILD_R="YES"
 CHANGE_PAYARA_INDEX="NO"
 
+# CUSTOM HEADER, FOOTER AND HOMEPAGE
+CUSTOM_PAGES="NO"
+
+
 # If you want to install Maxmind
 # Create an account and download at: https://dev.maxmind.com/geoip/geolite2-free-geolocation-data?lang=en
 BUILD_MAXMIND="YES"
@@ -42,12 +44,30 @@ GEOLITE_PACKAGE="GeoLite2-Country.tar.gz"
 
 
 # Change according to version
-# V5.5 V5.6
-PAYARA_SERVICE="https://guides.dataverse.org/en/5.5/_downloads/c08a166c96044c52a1a470cc2ff60444/payara.service"
-SOLR_SERVICE="https://guides.dataverse.org/en/5.5/_downloads/0736976a136678bbc024ce423b223d3a/solr.service"
-# V5.4.1
-# PAYARA_SERVICE="https://guides.dataverse.org/en/5.4.1/_downloads/payara.service"
-# SOLR_SERVICE="https://guides.dataverse.org/en/5.4.1/_downloads/solr.service"
+if [[ $DATAVERSE_VERSION == "5.7" ]]; then
+    # v5.7
+    PAYARA_VERSION="5.2021.5"
+    PAYARA_SERVICE="https://guides.dataverse.org/en/5.7/_downloads/c08a166c96044c52a1a470cc2ff60444/payara.service"
+    SOLR_SERVICE="https://guides.dataverse.org/en/5.7/_downloads/0736976a136678bbc024ce423b223d3a/solr.service"
+elif [[ $DATAVERSE_VERSION == "5.6" ]]; then
+    # v5.6
+    PAYARA_VERSION="5.2021.5"
+    PAYARA_SERVICE="https://guides.dataverse.org/en/5.6/_downloads/c08a166c96044c52a1a470cc2ff60444/payara.service"
+    SOLR_SERVICE="https://guides.dataverse.org/en/5.6/_downloads/0736976a136678bbc024ce423b223d3a/solr.service"
+elif [[ $DATAVERSE_VERSION == "5.5" ]]; then
+    # v5.5
+    PAYARA_VERSION="5.2020.6" 
+    PAYARA_SERVICE="https://guides.dataverse.org/en/5.5/_downloads/c08a166c96044c52a1a470cc2ff60444/payara.service"
+    SOLR_SERVICE="https://guides.dataverse.org/en/5.5/_downloads/0736976a136678bbc024ce423b223d3a/solr.service"
+elif [[ $DATAVERSE_VERSION == "5.4.1" ]]; then
+    # V5.4.1
+    PAYARA_VERSION="5.2020.6"
+    PAYARA_SERVICE="https://guides.dataverse.org/en/5.4.1/_downloads/payara.service"
+    SOLR_SERVICE="https://guides.dataverse.org/en/5.4.1/_downloads/solr.service"
+else
+    echo -e "${RED}ERROR: Dataverse $DATAVERSE_VERSION is not supported.${NC}"
+    exit
+fi
 
 ##############################
 
@@ -271,6 +291,26 @@ install_maxmind(){
 
 }
 
+custom_pages(){
+    echo -e "${YELLOW}Configure custom pages for DATAVERSE $DATAVERSE_VERSION...${NC}"
+    read_any
+
+    mkdir -p /var/www/dataverse/branding/
+    cd /var/www/dataverse/branding
+    wget https://guides.dataverse.org/en/latest/_downloads/0f28d7fe1a9937d9ef47ae3f8b51403e/custom-homepage.html
+    wget https://guides.dataverse.org/en/latest/_downloads/4e2c4e359b641142d3b5d34f979248b0/custom-header.html
+    wget https://guides.dataverse.org/en/latest/_downloads/1c9c782c8c0a4b602ad667eb5871203b/custom-footer.html
+    wget https://guides.dataverse.org/en/latest/_downloads/483ea011831fc72d7f1e923a1898f3a3/custom-stylesheet.css
+
+    curl -X PUT -d '/var/www/dataverse/branding/custom-homepage.html' http://localhost:8080/api/admin/settings/:HomePageCustomizationFile
+
+    curl -X PUT -d '/var/www/dataverse/branding/custom-header.html' http://localhost:8080/api/admin/settings/:HeaderCustomizationFile
+    curl -X PUT -d 'true' http://localhost:8080/api/admin/settings/:DisableRootDataverseTheme
+
+    curl -X PUT -d '/var/www/dataverse/branding/custom-footer.html' http://localhost:8080/api/admin/settings/:FooterCustomizationFile
+
+    curl -X PUT -d '/var/www/dataverse/branding/custom-stylesheet.css' http://localhost:8080/api/admin/settings/:StyleCustomizationFile
+}
 
 install_dataverse(){
     echo -e "${YELLOW}Install DATAVERSE $DATAVERSE_VERSION...${NC}"
@@ -291,11 +331,12 @@ configure_fake_doi(){
     echo -e "${YELLOW}Configure FAKE DOI for tests...\n${NC}"
     read_any
 
-    curl http://localhost:8080/api/admin/settings/:DoiProvider -X PUT -d FAKE
+    curl -X PUT -d FAKE http://localhost:8080/api/admin/settings/:DoiProvider
 }
 
 configure_regular_doi(){
     # https://brapci.inf.br/wiki/index.php/Dataverse:DOI
+    # https://guides.dataverse.org/en/5327-fake-pid-provider/installation/config.html#id106
     echo -e "${YELLOW}Configure Regular DOI...\n${NC}"
     read_any
 
@@ -303,6 +344,7 @@ configure_regular_doi(){
     sed -i "s/Ddoi.password=\${ALIAS=doi_password_alias}/Ddoi.password=$DOI_PASSWD/g" /usr/local/payara5/glassfish/domains/domain1/config/domain.xml
 
     curl -X PUT -d "$DOI_PREFIX" localhost:8080/api/admin/settings/:Authority
+    curl -X PUT -d DataCite http://localhost:8080/api/admin/settings/:DoiProvider
 }
 
 configure_dataverse(){
@@ -367,6 +409,10 @@ main(){
         if [[ $CHANGE_PAYARA_INDEX == "YES" ]]; then
             change_index_payara
         fi
+        if [[ $CUSTOM_PAGES == "YES" ]]; then
+            custom_pages
+        fi
+
 
         # Restore Postgresql security
         sed -i '2s/trust/md5/' /var/lib/pgsql/data/pg_hba.conf
