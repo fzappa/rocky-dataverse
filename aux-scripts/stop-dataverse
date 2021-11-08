@@ -1,0 +1,5 @@
+#!/bin/env bash
+
+export PAYARA=/usr/local/payara5/glassfish
+echo "Stoping Payara 5..."
+sudo -u dataverse $PAYARA/bin/asadmin stop-domain domain1

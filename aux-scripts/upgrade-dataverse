@@ -1,0 +1,63 @@
+#!/bin/env bash
+#
+# Download: https://github.com/IQSS/dataverse/releases
+
+
+DATAVERSE_VERSION="5.7"
+UPGRADE_TO_VERSION="5.8"
+
+# Check the app name with: 
+# $PAYARA_DIR/bin/asadmin list-applications
+APP_NAME="dataverse-$DATAVERSE_VERSION"
+
+DOMAIN="domain1"
+PAYARA_DIR="/usr/local/payara5"
+BACKUP_DIR="/home/dataverse/backup/$DOMAIN"
+
+
+
+# Colours
+RED='\e[0;31m'
+REDB='\e[1;31;5m'
+GREEN='\e[1;92m'
+YELLOW='\e[1;33m'
+NC='\e[0m' # No Color
+
+
+upgrade_dataverse(){
+    
+    echo -e "${YELLOW}Upgrade Dataverse to version $UPGRADE_TO_VERSION...${NC}"
+    sudo -u dataverse $PAYARA_DIR/bin/asadmin undeploy $APP_NAME
+    sudo -u dataverse $PAYARA_DIR/bin/asadmin stop-domain $DOMAIN
+
+    #systemctl stop payara
+
+    rm -rf $PAYARA_DIR/glassfish/domains/$DOMAIN/generated
+    
+    #systemctl start payara
+
+    sudo -u dataverse $PAYARA_DIR/bin/asadmin start-domain $DOMAIN
+
+    cd $PAYARA_DIR
+    wget -c https://github.com/IQSS/dataverse/releases/download/v$UPGRADE_TO_VERSION/dataverse-$UPGRADE_TO_VERSION.war
+
+    sudo -u dataverse $PAYARA_DIR/bin/asadmin deploy $PAYARA_DIR/dataverse-$UPGRADE_TO_VERSION.war
+
+    #systemctl stop payara
+
+    sudo -u dataverse $PAYARA_DIR/bin/asadmin stop-domain $DOMAIN
+
+    #systemctl start payara
+
+    sudo -u dataverse $PAYARA_DIR/bin/asadmin start-domain $DOMAIN
+
+
+}
+
+
+main(){
+    upgrade_dataverse
+}
+
+
+main

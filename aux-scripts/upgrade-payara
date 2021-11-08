@@ -1,0 +1,73 @@
+#!/usr/bin/env bash
+#
+# Upgrade Payara on Rocky Linux
+#
+# Alan Franco
+# github.com/fzappa/rocky-dataverse
+#
+# License: GPL-3.0
+#
+#
+
+PAYARA_DIR="/usr/local/payara5"
+DOMAIN="domain1"
+BACKUP_DIR="/home/dataverse/backup/$DOMAIN"
+VERSION_TO_UPGRADE="5.2021.5"
+PROXY_SERVER="nginx"
+
+
+# Colours
+RED='\e[0;31m'
+REDB='\e[1;31;5m'
+GREEN='\e[1;92m'
+YELLOW='\e[1;33m'
+NC='\e[0m' # No Color
+
+upgrade_payara(){
+
+    echo -e "${YELLOW}Upgrade Payara to version $VERSION_TO_UPGRADE...${NC}"
+
+    echo -e "${YELLOW}Download Payara $VERSION_TO_UPGRADE...${NC}"
+    cd /opt
+    wget -c https://s3-eu-west-1.amazonaws.com/payara.fish/Payara+Downloads/$VERSION_TO_UPGRADE/payara-$VERSION_TO_UPGRADE.zip
+    unzip payara-$VERSION_TO_UPGRADE.zip
+        
+    systemctl stop $PROXY_SERVER
+
+    echo -e "${YELLOW}Stop and backup domain $DOMAIN...${NC}"
+    sudo -u dataverse $PAYARA_DIR/bin/asadmin stop-domain $DOMAIN
+    mkdir -p $BACKUP_DIR
+    $PAYARA_DIR/bin/asadmin backup-domain --backupDir $BACKUP_DIR $DOMAIN
+
+    systemctl stop payara
+
+    echo -e "${YELLOW}Installing new Payara...${NC}"
+    mv /usr/local/payara5 /usr/local/payara5-old
+    mv /opt/payara5 /usr/local
+
+    chown -R root:root /usr/local/payara5
+    chown dataverse /usr/local/payara5/glassfish/lib
+    chown -R dataverse:dataverse /usr/local/payara5/glassfish/domains/$DOMAIN
+
+    echo -e "${YELLOW}Start new Payara $VERSION_TO_UPGRADE...${NC}"
+    systemctl start payara
+    sudo -u dataverse $PAYARA_DIR/bin/asadmin stop-domain $DOMAIN
+    sudo -u dataverse $PAYARA_DIR/bin/asadmin restore-domain --backupdir $BACKUP_DIR $DOMAIN
+    sudo -u dataverse $PAYARA_DIR/bin/asadmin start-domain $DOMAIN
+    systemctl start $PROXY_SERVER
+
+}
+
+
+main(){
+    upgrade_payara
+}
+
+
+
+main
+
+
+
+
+

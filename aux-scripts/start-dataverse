@@ -1,0 +1,5 @@
+#!/bin/env bash
+
+export PAYARA=/usr/local/payara5/glassfish
+echo "Starting Payara 5..."
+sudo -u dataverse $PAYARA/bin/asadmin start-domain domain1

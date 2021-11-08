@@ -1,0 +1,28 @@
+#!/bin/env bash
+
+HOME_DATAVERSE_USER=/home/dataverse
+
+# Dir
+if [ ! -d "$HOME_DATAVERSE_USER/backup/psql" ]; then
+    mkdir -p $HOME_DATAVERSE_USER/backup/psql
+fi
+
+
+# Year
+if [ ! -d "$HOME_DATAVERSE_USER/backup/psql/$(date +"%Y")" ]; then
+    mkdir -p $HOME_DATAVERSE_USER/backup/psql/$(date +"%Y")
+fi
+
+# Month
+if [ ! -d "$HOME_DATAVERSE_USER/backup/psql/$(date +"%Y")/$(date +"%m")" ]; then
+    mkdir -p $HOME_DATAVERSE_USER/backup/psql/$(date +"%Y")/$(date +"%m")
+fi
+
+# Day
+if [ ! -d "$HOME_DATAVERSE_USER/backup/psql/$(date +"%Y")/$(date +"%m")/$(date +"%d")" ]; then
+    mkdir -p $HOME_DATAVERSE_USER/backup/psql/$(date +"%Y")/$(date +"%m")/$(date +"%d")
+fi
+
+# Backup
+sudo -u postgres pg_dump dvndb > $HOME_DATAVERSE_USER/backup/psql/$(date +"%Y")/$(date +"%m")/$(date +"%d")/dvndb_$(date +"%H:%M").sql
+
