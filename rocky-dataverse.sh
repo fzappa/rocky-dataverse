@@ -7,7 +7,7 @@
 #
 # License: GPL-3.0
 #
-# Based on https://guides.dataverse.org/en/5.5/installation/prerequisites.html
+# Based on https://guides.dataverse.org/en/5.8/installation/prerequisites.html
 #
 
 ####### CHANGE ME ##########
@@ -44,30 +44,19 @@ GEOLITE_PACKAGE="GeoLite2-Country.tar.gz"
 
 
 # Change according to version
-if [[ $DATAVERSE_VERSION == "5.7" ]]; then
-    # v5.7
+if [[ $DATAVERSE_VERSION == "5.8" || $DATAVERSE_VERSION == "5.7" || $DATAVERSE_VERSION == "5.6" ]]; then
+    # v5.8. v5.7, v5.6
     PAYARA_VERSION="5.2021.5"
-    PAYARA_SERVICE="https://guides.dataverse.org/en/5.7/_downloads/c08a166c96044c52a1a470cc2ff60444/payara.service"
-    SOLR_SERVICE="https://guides.dataverse.org/en/5.7/_downloads/0736976a136678bbc024ce423b223d3a/solr.service"
-elif [[ $DATAVERSE_VERSION == "5.6" ]]; then
-    # v5.6
-    PAYARA_VERSION="5.2021.5"
-    PAYARA_SERVICE="https://guides.dataverse.org/en/5.6/_downloads/c08a166c96044c52a1a470cc2ff60444/payara.service"
-    SOLR_SERVICE="https://guides.dataverse.org/en/5.6/_downloads/0736976a136678bbc024ce423b223d3a/solr.service"
 elif [[ $DATAVERSE_VERSION == "5.5" ]]; then
     # v5.5
     PAYARA_VERSION="5.2020.6" 
-    PAYARA_SERVICE="https://guides.dataverse.org/en/5.5/_downloads/c08a166c96044c52a1a470cc2ff60444/payara.service"
-    SOLR_SERVICE="https://guides.dataverse.org/en/5.5/_downloads/0736976a136678bbc024ce423b223d3a/solr.service"
-elif [[ $DATAVERSE_VERSION == "5.4.1" ]]; then
-    # V5.4.1
-    PAYARA_VERSION="5.2020.6"
-    PAYARA_SERVICE="https://guides.dataverse.org/en/5.4.1/_downloads/payara.service"
-    SOLR_SERVICE="https://guides.dataverse.org/en/5.4.1/_downloads/solr.service"
 else
     echo -e "${RED}ERROR: Dataverse $DATAVERSE_VERSION is not supported.${NC}"
     exit
 fi
+
+PAYARA_SERVICE="https://guides.dataverse.org/en/$DATAVERSE_VERSION/_downloads/c08a166c96044c52a1a470cc2ff60444/payara.service"
+SOLR_SERVICE="https://guides.dataverse.org/en/$DATAVERSE_VERSION/_downloads/0736976a136678bbc024ce423b223d3a/solr.service"
 
 ##############################
 
@@ -125,7 +114,7 @@ download_payara(){
     usermod -aG sudo dataverse
     
     cd $SCRIPT_DIR
-    wget https://s3-eu-west-1.amazonaws.com/payara.fish/Payara+Downloads/$PAYARA_VERSION/payara-$PAYARA_VERSION.zip
+    wget -c https://s3-eu-west-1.amazonaws.com/payara.fish/Payara+Downloads/$PAYARA_VERSION/payara-$PAYARA_VERSION.zip
     unzip payara-$PAYARA_VERSION.zip
     mv payara5 /usr/local
 }
@@ -141,7 +130,7 @@ install_payara(){
 
     
     cd /usr/lib/systemd/system/
-    wget $PAYARA_SERVICE
+    wget -c $PAYARA_SERVICE
     echo -e "${GREEN}Start and enable Payara service...${NC}"
     systemctl daemon-reload
     systemctl enable --now payara.service
@@ -191,7 +180,7 @@ download_dataverse(){
     echo -e "${YELLOW}Download Dataverse v$DATAVERSE_VERSION...${NC}"
     read_any
     cd $SCRIPT_DIR
-    wget https://github.com/IQSS/dataverse/releases/download/v$DATAVERSE_VERSION/dvinstall.zip
+    wget -c https://github.com/IQSS/dataverse/releases/download/v$DATAVERSE_VERSION/dvinstall.zip
     unzip dvinstall.zip
 }
 
@@ -207,7 +196,7 @@ install_solr(){
     mkdir /usr/local/solr
     chown solr:solr /usr/local/solr
     cd /usr/local/solr
-    sudo -u solr wget https://archive.apache.org/dist/lucene/solr/$SOLR_VERSION/solr-$SOLR_VERSION.tgz
+    sudo -u solr wget -c https://archive.apache.org/dist/lucene/solr/$SOLR_VERSION/solr-$SOLR_VERSION.tgz
     sudo -u solr tar xvzf solr-$SOLR_VERSION.tgz
     cd solr-$SOLR_VERSION
     sudo -u solr cp -r /usr/local/solr/solr-$SOLR_VERSION/server/solr/configsets/_default server/solr/collection1
@@ -225,7 +214,7 @@ install_solr(){
     sudo -u solr sed -i "s/name=\"solr.jetty.request.header.size\" default=\"8192\"/name=\"solr.jetty.request.header.size\" default=\"102400\"/g" /usr/local/solr/solr-$SOLR_VERSION/server/etc/jetty.xml
 
     cd /etc/systemd/system
-    wget $SOLR_SERVICE
+    wget -c $SOLR_SERVICE
 
     systemctl daemon-reload
     echo -e "${GREEN}Start and enable SOLR service...${NC}"
@@ -273,7 +262,7 @@ install_maxmind(){
     read_any
 
     cd /usr/local
-    wget https://github.com/CDLUC3/counter-processor/archive/v0.0.1.tar.gz
+    wget -c https://github.com/CDLUC3/counter-processor/archive/v0.0.1.tar.gz
     tar xvfz v0.0.1.tar.gz
 
     cd /usr/local/counter-processor-0.0.1
@@ -297,10 +286,10 @@ custom_pages(){
 
     mkdir -p /var/www/dataverse/branding/
     cd /var/www/dataverse/branding
-    wget https://guides.dataverse.org/en/latest/_downloads/0f28d7fe1a9937d9ef47ae3f8b51403e/custom-homepage.html
-    wget https://guides.dataverse.org/en/latest/_downloads/4e2c4e359b641142d3b5d34f979248b0/custom-header.html
-    wget https://guides.dataverse.org/en/latest/_downloads/1c9c782c8c0a4b602ad667eb5871203b/custom-footer.html
-    wget https://guides.dataverse.org/en/latest/_downloads/483ea011831fc72d7f1e923a1898f3a3/custom-stylesheet.css
+    wget -c https://guides.dataverse.org/en/latest/_downloads/0f28d7fe1a9937d9ef47ae3f8b51403e/custom-homepage.html
+    wget -c https://guides.dataverse.org/en/latest/_downloads/4e2c4e359b641142d3b5d34f979248b0/custom-header.html
+    wget -c https://guides.dataverse.org/en/latest/_downloads/1c9c782c8c0a4b602ad667eb5871203b/custom-footer.html
+    wget -c https://guides.dataverse.org/en/latest/_downloads/483ea011831fc72d7f1e923a1898f3a3/custom-stylesheet.css
 
     curl -X PUT -d '/var/www/dataverse/branding/custom-homepage.html' http://localhost:8080/api/admin/settings/:HomePageCustomizationFile
 
