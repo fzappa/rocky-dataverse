@@ -30,25 +30,15 @@ upgrade_dataverse(){
     sudo -u dataverse $PAYARA_DIR/bin/asadmin undeploy $APP_NAME
     sudo -u dataverse $PAYARA_DIR/bin/asadmin stop-domain $DOMAIN
 
-    #systemctl stop payara
-
     rm -rf $PAYARA_DIR/glassfish/domains/$DOMAIN/generated
     
-    #systemctl start payara
-
     sudo -u dataverse $PAYARA_DIR/bin/asadmin start-domain $DOMAIN
 
     cd $PAYARA_DIR
     wget -c https://github.com/IQSS/dataverse/releases/download/v$UPGRADE_TO_VERSION/dataverse-$UPGRADE_TO_VERSION.war
 
     sudo -u dataverse $PAYARA_DIR/bin/asadmin deploy $PAYARA_DIR/dataverse-$UPGRADE_TO_VERSION.war
-
-    #systemctl stop payara
-
     sudo -u dataverse $PAYARA_DIR/bin/asadmin stop-domain $DOMAIN
-
-    #systemctl start payara
-
     sudo -u dataverse $PAYARA_DIR/bin/asadmin start-domain $DOMAIN
 
 
