@@ -3,7 +3,9 @@ A simple script to install Dataverse on Rocky Linux.
 
 ## Installation
 
-Reference: https://guides.dataverse.org/en/5.5/installation/prerequisites.html
+Reference: https://guides.dataverse.org/en/5.8/installation/prerequisites.html
+
+It's highly recommended that you read the Reference.
 
 If you want to install Maxmind, create an account and download **GeoLite2-Country** at:
 

@@ -39,7 +39,7 @@ CUSTOM_PAGES="NO"
 
 # If you want to install Maxmind
 # Create an account and download at: https://dev.maxmind.com/geoip/geolite2-free-geolocation-data?lang=en
-BUILD_MAXMIND="YES"
+BUILD_MAXMIND="NO"
 GEOLITE_PACKAGE="GeoLite2-Country.tar.gz"
 
 
