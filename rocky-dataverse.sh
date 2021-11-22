@@ -74,7 +74,9 @@ pre_config(){
     read_any
     if [ ! -d $SCRIPT_DIR ]; then
         mkdir $SCRIPT_DIR         
-        yes | cp -rp ~/rocky-dataverse.sh $SCRIPT_DIR        
+        yes | cp -rp ~/rocky-dataverse.sh $SCRIPT_DIR   
+    else
+        yes | cp -rp ~/rocky-dataverse.sh $SCRIPT_DIR       
     fi
 
     if [[ $BUILD_MAXMIND == "YES" ]]; then
