@@ -364,6 +364,15 @@ configure_selinux(){
     setsebool -P httpd_setrlimit 1
 }
 
+security(){
+
+    # Restore Postgresql security
+    sed -i '2s/trust/md5/' /var/lib/pgsql/data/pg_hba.conf
+
+    # enable the following setting to address CVE-2021-44228
+    echo "SOLR_OPTS=\"\$SOLR_OPTS -Dlog4j2.formatMsgNoLookups=true\"" >> /usr/local/solr/$SOLR_VERSION/bin/solr.in.sh
+}
+
 read_any(){
     read -n 1 -s -r -p "Press any key to continue..."$'\n' msg
 }
@@ -404,10 +413,7 @@ main(){
             custom_pages
         fi
 
-
-        # Restore Postgresql security
-        sed -i '2s/trust/md5/' /var/lib/pgsql/data/pg_hba.conf
-
+        security
     
         echo -e "${REDB}\n\nPOST INSTALL TIPS${NC}"
         echo " "
