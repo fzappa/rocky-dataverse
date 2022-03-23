@@ -7,7 +7,7 @@
 #
 # License: GPL-3.0
 #
-# Based on https://guides.dataverse.org/en/5.8/installation/prerequisites.html
+# Based on https://guides.dataverse.org/en/5.10/installation/prerequisites.html
 #
 
 ####### CHANGE ME ##########
@@ -15,10 +15,9 @@ INSTITUTE="My Institute"
 EMAIL="user@domain.org"
 PROJECT_NAME="RedeDadosAbertos"
 SCRIPT_DIR="/opt/rocky-dataverse"
-DATAVERSE_VERSION="5.8"
+DATAVERSE_VERSION="5.10"
 JAVA_VERSION="11"
 POSTGRESQL_VERSION="13"
-SOLR_VERSION="8.8.1"
 
 
 # DOI CONFIGURE
@@ -44,8 +43,9 @@ GEOLITE_PACKAGE="GeoLite2-Country.tar.gz"
 
 
 # Change according to version
-if [[ $DATAVERSE_VERSION == "5.8" || $DATAVERSE_VERSION == "5.7" || $DATAVERSE_VERSION == "5.6" ]]; then
-    # v5.8. v5.7, v5.6
+# FIXME ==>
+if [[ $DATAVERSE_VERSION == "5.10" || $DATAVERSE_VERSION == "5.9" || $DATAVERSE_VERSION == "5.8" || $DATAVERSE_VERSION == "5.7" || $DATAVERSE_VERSION == "5.6" ]]; then
+    # v5.10, v5.9, v5.8. v5.7, v5.6
     PAYARA_VERSION="5.2021.5"
 elif [[ $DATAVERSE_VERSION == "5.5" ]]; then
     # v5.5
@@ -53,6 +53,12 @@ elif [[ $DATAVERSE_VERSION == "5.5" ]]; then
 else
     echo -e "${RED}ERROR: Dataverse $DATAVERSE_VERSION is not supported.${NC}"
     exit
+fi
+
+if [[ $DATAVERSE_VERSION == "5.10" ]]; then
+	SOLR_VERSION="8.11.1"
+else
+	SOLR_VERSION="8.8.1"
 fi
 
 PAYARA_SERVICE="https://guides.dataverse.org/en/$DATAVERSE_VERSION/_downloads/c08a166c96044c52a1a470cc2ff60444/payara.service"
