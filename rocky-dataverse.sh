@@ -15,10 +15,10 @@ INSTITUTE="My Institute"
 EMAIL="user@domain.org"
 PROJECT_NAME="RedeDadosAbertos"
 SCRIPT_DIR="/opt/rocky-dataverse"
-DATAVERSE_VERSION="5.10"
+DATAVERSE_VERSION="5.11"
 JAVA_VERSION="11"
 POSTGRESQL_VERSION="13"
-
+PAUSE_SETUP="YES"
 
 # DOI CONFIGURE
 USE_FAKE_DOI="YES"
@@ -44,25 +44,20 @@ GEOLITE_PACKAGE="GeoLite2-Country.tar.gz"
 
 # Change according to version
 # FIXME ==>
-if [[ $DATAVERSE_VERSION == "5.10" || $DATAVERSE_VERSION == "5.9" || $DATAVERSE_VERSION == "5.8" || $DATAVERSE_VERSION == "5.7" || $DATAVERSE_VERSION == "5.6" ]]; then
-    # v5.10, v5.9, v5.8. v5.7, v5.6
-    PAYARA_VERSION="5.2021.5"
-elif [[ $DATAVERSE_VERSION == "5.5" ]]; then
-    # v5.5
-    PAYARA_VERSION="5.2020.6" 
+if [[ $DATAVERSE_VERSION == "5.11" || $DATAVERSE_VERSION == "5.10.1" || $DATAVERSE_VERSION == "5.9" ]]; then
+    # v5.11, v5.10.1, v5.9
+    PAYARA_VERSION="5.2021.6"
 else
     echo -e "${RED}ERROR: Dataverse $DATAVERSE_VERSION is not supported.${NC}"
     exit
 fi
 
-if [[ $DATAVERSE_VERSION == "5.10" ]]; then
-	SOLR_VERSION="8.11.1"
-else
-	SOLR_VERSION="8.8.1"
-fi
+SOLR_VERSION="8.11.1"
+
 
 PAYARA_SERVICE="https://guides.dataverse.org/en/$DATAVERSE_VERSION/_downloads/c08a166c96044c52a1a470cc2ff60444/payara.service"
 SOLR_SERVICE="https://guides.dataverse.org/en/$DATAVERSE_VERSION/_downloads/0736976a136678bbc024ce423b223d3a/solr.service"
+
 
 ##############################
 
@@ -119,7 +114,7 @@ download_payara(){
     echo -e "${YELLOW}Download Payara $PAYARA_VERSION...${NC}"
     read_any
     useradd dataverse
-    usermod -aG sudo dataverse
+    usermod -aG wheel dataverse
     
     cd $SCRIPT_DIR
     wget -c https://s3-eu-west-1.amazonaws.com/payara.fish/Payara+Downloads/$PAYARA_VERSION/payara-$PAYARA_VERSION.zip
@@ -139,6 +134,7 @@ install_payara(){
     
     cd /usr/lib/systemd/system/
     wget -c $PAYARA_SERVICE
+    sed -i "/^User=.*/a Group=dataverse" payara.service
     echo -e "${GREEN}Start and enable Payara service...${NC}"
     systemctl daemon-reload
     systemctl enable --now payara.service
@@ -199,10 +195,10 @@ install_solr(){
 
     cd $SCRIPT_DIR
     useradd solr
-    usermod -aG sudo solr
+    usermod -aG wheel solr
 
     mkdir /usr/local/solr
-    chown solr:solr /usr/local/solr
+    chown solr:solr /usr/local/solr -R
     cd /usr/local/solr
     sudo -u solr wget -c https://archive.apache.org/dist/lucene/solr/$SOLR_VERSION/solr-$SOLR_VERSION.tgz
     sudo -u solr tar xvzf solr-$SOLR_VERSION.tgz
@@ -223,6 +219,7 @@ install_solr(){
 
     cd /etc/systemd/system
     wget -c $SOLR_SERVICE
+    sed -i "/^User = .*/a Group = solr" solr.service
 
     systemctl daemon-reload
     echo -e "${GREEN}Start and enable SOLR service...${NC}"
@@ -270,20 +267,21 @@ install_maxmind(){
     read_any
 
     cd /usr/local
-    wget -c https://github.com/CDLUC3/counter-processor/archive/v0.0.1.tar.gz
-    tar xvfz v0.0.1.tar.gz
-
-    cd /usr/local/counter-processor-0.0.1
+    wget -c https://github.com/CDLUC3/counter-processor/archive/v0.1.04.tar.gz
+    tar xvfz v0.1.04.tar.gz
 
     cd $SCRIPT_DIR
     tar xvfz $GEOLITE_PACKAGE
-    cp GeoLite2-Country_*/GeoLite2-Country.mmdb /usr/local/counter-processor-0.0.1/maxmind_geoip
+    cp GeoLite2-Country_*/GeoLite2-Country.mmdb /usr/local/counter-processor-0.1.04/maxmind_geoip
 
     useradd counter
-    chown -R counter:counter /usr/local/counter-processor-0.0.1
+    chown -R counter:counter /usr/local/counter-processor-0.1.04
 
-    python3 -m ensurepip
-    cd /usr/local/counter-processor-0.0.1
+    dnf install -y python39
+    python3.9 -m ensurepip
+    cd /usr/local/counter-processor-0.1.04
+    sed -i "s/ipython==7.19.0/ipython>=7.16.1/g" requirements.txt
+    sed -i "s/traitlets==5.0.5/traitlets>=4.3.3/g" requirements.txt
     pip3 install -r requirements.txt
 
 }
@@ -376,11 +374,13 @@ security(){
     sed -i '2s/trust/md5/' /var/lib/pgsql/data/pg_hba.conf
 
     # enable the following setting to address CVE-2021-44228
-    echo "SOLR_OPTS=\"\$SOLR_OPTS -Dlog4j2.formatMsgNoLookups=true\"" >> /usr/local/solr/$SOLR_VERSION/bin/solr.in.sh
+    #echo "SOLR_OPTS=\"\$SOLR_OPTS -Dlog4j2.formatMsgNoLookups=true\"" >> /usr/local/solr/$SOLR_VERSION/bin/solr.in.sh
 }
 
 read_any(){
-    read -n 1 -s -r -p "Press any key to continue..."$'\n' msg
+    if [[ $PAUSE_SETUP == "YES" ]]; then
+        read -n 1 -s -r -p "Press any key to continue..."$'\n' msg
+    fi
 }
 
 
@@ -419,7 +419,7 @@ main(){
             custom_pages
         fi
 
-        security
+        #security
     
         echo -e "${REDB}\n\nPOST INSTALL TIPS${NC}"
         echo " "
