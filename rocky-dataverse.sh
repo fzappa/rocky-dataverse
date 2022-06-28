@@ -7,7 +7,7 @@
 #
 # License: GPL-3.0
 #
-# Based on https://guides.dataverse.org/en/5.10/installation/prerequisites.html
+# Based on https://guides.dataverse.org/en/5.11/installation/prerequisites.html
 #
 
 ####### CHANGE ME ##########
@@ -28,6 +28,12 @@ DOI_PREFIX="10.5072"
 DOI_USERNAME="username"
 DOI_PASSWD="password"
 
+# CONFIGURE SEND E-MAIL
+SEND_EMAIL="NO"
+MAIL_HOST="mail.smtp"
+MAIL_USER=$EMAIL
+FROM_ADDRESS=$EMAIL
+
 BUILD_IMAGEMAGICK="YES"
 BUILD_R="YES"
 CHANGE_PAYARA_INDEX="NO"
@@ -38,7 +44,7 @@ CUSTOM_PAGES="NO"
 
 # If you want to install Maxmind
 # Create an account and download at: https://dev.maxmind.com/geoip/geolite2-free-geolocation-data?lang=en
-BUILD_MAXMIND="NO"
+BUILD_MAXMIND="YES"
 GEOLITE_PACKAGE="GeoLite2-Country.tar.gz"
 
 
@@ -57,7 +63,6 @@ SOLR_VERSION="8.11.1"
 
 PAYARA_SERVICE="https://guides.dataverse.org/en/$DATAVERSE_VERSION/_downloads/c08a166c96044c52a1a470cc2ff60444/payara.service"
 SOLR_SERVICE="https://guides.dataverse.org/en/$DATAVERSE_VERSION/_downloads/0736976a136678bbc024ce423b223d3a/solr.service"
-
 
 ##############################
 
@@ -101,6 +106,32 @@ pre_config(){
     fi
 }
 
+
+download_packages(){
+    echo -e "${YELLOW}Download all packages...${NC}"
+    cd $SCRIPT_DIR
+
+    if [ ! -f ~/rocky-dataverse/payara-$PAYARA_VERSION.zip ]; then
+        echo -e "${YELLOW}Download Payara $PAYARA_VERSION...${NC}"
+        wget -c https://s3-eu-west-1.amazonaws.com/payara.fish/Payara+Downloads/$PAYARA_VERSION/payara-$PAYARA_VERSION.zip
+    else
+        cp -rp ~/rocky-dataverse/payara-$PAYARA_VERSION.zip .
+    fi
+
+    if [ ! -f ~/rocky-dataverse/dvinstall.zip ]; then
+        echo -e "${YELLOW}Download Dataverse $DATAVERSE_VERSION...${NC}"
+        wget -c https://github.com/IQSS/dataverse/releases/download/v$DATAVERSE_VERSION/dvinstall.zip
+    else
+        cp -rp ~/rocky-dataverse/dvinstall.zip .
+    fi
+
+    if [ ! -f ~/rocky-dataverse/solr-$SOLR_VERSION.tgz ]; then
+        echo -e "${YELLOW}Download Solr $SOLR_VERSION...${NC}"
+        wget -c https://archive.apache.org/dist/lucene/solr/$SOLR_VERSION/solr-$SOLR_VERSION.tgz
+    else
+        cp -rp ~/rocky-dataverse/solr-$SOLR_VERSION.tgz .
+    fi
+}
 
 install_java(){
     echo -e "${YELLOW}Install Java $JAVA_VERSION...${NC}"
@@ -194,13 +225,16 @@ install_solr(){
     read_any
 
     cd $SCRIPT_DIR
+    wget -c https://archive.apache.org/dist/lucene/solr/$SOLR_VERSION/solr-$SOLR_VERSION.tgz
+
     useradd solr
     usermod -aG wheel solr
 
     mkdir /usr/local/solr
-    chown solr:solr /usr/local/solr -R
+    cp $SCRIPT_DIR/solr-$SOLR_VERSION.tgz /usr/local/solr
     cd /usr/local/solr
-    sudo -u solr wget -c https://archive.apache.org/dist/lucene/solr/$SOLR_VERSION/solr-$SOLR_VERSION.tgz
+    chown solr:solr /usr/local/solr -R
+    
     sudo -u solr tar xvzf solr-$SOLR_VERSION.tgz
     cd solr-$SOLR_VERSION
     sudo -u solr cp -r /usr/local/solr/solr-$SOLR_VERSION/server/solr/configsets/_default server/solr/collection1
@@ -358,6 +392,20 @@ configure_dataverse(){
 
 }
 
+configure_email(){
+    echo -e "${YELLOW}Configure e-mail...${NC}"
+    read_any
+
+    cd /usr/local/payara5/bin
+    ./asadmin delete-javamail-resource mail/notifyMailSession
+    ./asadmin create-javamail-resource --mailhost $MAIL_HOST \
+    --mailuser $MAIL_USER \
+    --fromaddress $FROM_ADDRESS \
+    --property mail.smtp.auth=false:mail.smtp.password=passwd:mail.smtp.port=587:mail.smtp.socketFactory.port=javax.net.ssl.SSLSocketFactory \
+    mail/notifyMailSession
+}
+
+
 configure_selinux(){
     echo -e "${YELLOW}Enable AVC rules in SELinux for Apache and NGINX...${NC}"
     read_any
@@ -393,6 +441,7 @@ main(){
         exit
     else
         pre_config
+        download_packages
         install_java
         download_payara
         install_payara
@@ -411,6 +460,9 @@ main(){
         fi
         install_dataverse
         configure_dataverse
+        if [[ $SEND_EMAIL == "YES" ]]; then
+            configure_email
+        fi
         configure_selinux
         if [[ $CHANGE_PAYARA_INDEX == "YES" ]]; then
             change_index_payara
