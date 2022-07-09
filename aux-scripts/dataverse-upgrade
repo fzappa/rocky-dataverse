@@ -3,8 +3,8 @@
 # Download: https://github.com/IQSS/dataverse/releases
 
 
-DATAVERSE_VERSION="5.7"
-UPGRADE_TO_VERSION="5.8"
+DATAVERSE_VERSION="5.10.1"
+UPGRADE_TO_VERSION="5.11"
 
 # Check the app name with: 
 # $PAYARA_DIR/bin/asadmin list-applications

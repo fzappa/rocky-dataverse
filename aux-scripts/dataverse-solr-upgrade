@@ -1,0 +1,87 @@
+#!/usr/bin/env bash
+#
+# Upgrade Solr on Rocky Linux
+#
+# Alan Franco
+# github.com/fzappa/rocky-dataverse
+#
+# License: GPL-3.0
+#
+#
+
+SOLR_VERSION="8.11.1"
+DATAVERSE_VERSION="5.11"
+
+SCRIPT_DIR="/opt/solr"
+SOLR_SERVICE="https://guides.dataverse.org/en/$DATAVERSE_VERSION/_downloads/0736976a136678bbc024ce423b223d3a/solr.service"
+
+PAYARA="/usr/local/payara5/glassfish"
+
+# Colours
+RED='\e[0;31m'
+REDB='\e[1;31;5m'
+GREEN='\e[1;92m'
+YELLOW='\e[1;33m'
+NC='\e[0m' # No Color
+
+upgrade_solr(){
+
+    echo -e "${YELLOW}Upgrade Solr to version $SOLR_VERSION...${NC}"
+
+    echo -e "${YELLOW}Download Solr $SOLR_VERSION...${NC}"
+
+    mkdir -p $SCRIPT_DIR
+    cd $SCRIPT_DIR
+
+    wget -c https://github.com/IQSS/dataverse/releases/download/v$DATAVERSE_VERSION/dvinstall.zip
+    wget -c https://archive.apache.org/dist/lucene/solr/$SOLR_VERSION/solr-$SOLR_VERSION.tgz
+
+    unzip dvinstall.zip
+
+    cp $SCRIPT_DIR/solr-$SOLR_VERSION.tgz /usr/local/solr
+    cd /usr/local/solr
+
+    chown solr:solr /usr/local/solr -R
+    sudo -u solr tar xvzf solr-$SOLR_VERSION.tgz
+    cd solr-$SOLR_VERSION
+
+    sudo -u solr cp -r /usr/local/solr/solr-$SOLR_VERSION/server/solr/configsets/_default server/solr/collection1
+    sudo -u solr cp $SCRIPT_DIR/dvinstall/schema*.xml /usr/local/solr/solr-$SOLR_VERSION/server/solr/collection1/conf
+    sudo -u solr cp $SCRIPT_DIR/dvinstall/solrconfig.xml /usr/local/solr/solr-$SOLR_VERSION/server/solr/collection1/conf
+    sudo -u solr echo "name=collection1" > /usr/local/solr/solr-$SOLR_VERSION/server/solr/collection1/core.properties
+    sudo -u solr sed -i "s/name=\"solr.jetty.request.header.size\" default=\"8192\"/name=\"solr.jetty.request.header.size\" default=\"102400\"/g" /usr/local/solr/solr-$SOLR_VERSION/server/etc/jetty.xml
+
+    cd /etc/systemd/system
+    systemctl stop solr
+    systemctl disable solr
+
+    rm -rf solr.service
+    wget -c $SOLR_SERVICE
+    sed -i "/^User = .*/a Group = solr" solr.service
+    systemctl daemon-reload
+
+    systemctl enable --now solr.service
+
+    rm -rf /usr/local/solr/solr-$SOLR_VERSION.tgz
+    rm -rf $SCRIPT_DIR
+
+    sudo -u dataverse $PAYARA/bin/asadmin stop-domain domain1
+    sudo -u dataverse $PAYARA/bin/asadmin start-domain domain1
+    systemctl restart nginx
+
+
+}
+
+
+main(){
+    upgrade_solr
+}
+
+
+
+main
+
+
+
+
+

@@ -12,9 +12,12 @@
 PAYARA_DIR="/usr/local/payara5"
 DOMAIN="domain1"
 BACKUP_DIR="/home/dataverse/backup/$DOMAIN"
-VERSION_TO_UPGRADE="5.2021.5"
+VERSION_TO_UPGRADE="5.2021.6"
+DATAVERSE_VERSION="5.11"
 PROXY_SERVER="nginx"
 
+
+PAYARA_SERVICE="https://guides.dataverse.org/en/$DATAVERSE_VERSION/_downloads/c08a166c96044c52a1a470cc2ff60444/payara.service"
 
 # Colours
 RED='\e[0;31m'
@@ -50,13 +53,27 @@ upgrade_payara(){
     chown -R dataverse:dataverse /usr/local/payara5/glassfish/domains/$DOMAIN
 
     echo -e "${YELLOW}Start new Payara $VERSION_TO_UPGRADE...${NC}"
-    systemctl start payara
+
+    cd /usr/lib/systemd/system/
+    rm -rf payara.service
+    wget -c $PAYARA_SERVICE
+    sed -i "/^User=.*/a Group=dataverse" payara.service
+    echo -e "${GREEN}Start and enable Payara service...${NC}"
+    systemctl daemon-reload
+    systemctl enable --now payara.service
     sudo -u dataverse $PAYARA_DIR/bin/asadmin stop-domain $DOMAIN
-    sudo -u dataverse $PAYARA_DIR/bin/asadmin restore-domain --backupdir $BACKUP_DIR $DOMAIN
+
+    $PAYARA_DIR/bin/asadmin restore-domain --backupdir $BACKUP_DIR $DOMAIN
+    
+    chown -R dataverse:dataverse /usr/local/payara5/glassfish/domains/$DOMAIN
     sudo -u dataverse $PAYARA_DIR/bin/asadmin start-domain $DOMAIN
+
     systemctl start $PROXY_SERVER
 
 }
+
+#excludepkgs=java-11-openjdk,java-11-openjdk-headless,postgresql,postgresql-server
+
 
 
 main(){

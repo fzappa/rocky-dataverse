@@ -1,0 +1,99 @@
+#!/usr/bin/env bash
+#
+# Install Dataverse Languages
+#
+# Alan Franco
+# github.com/fzappa/rocky-dataverse
+#
+# License: GPL-3.0
+#
+#
+
+DATA_TMP_DIR="/data/dataverse"
+PAYARA="/usr/local/payara5/glassfish"
+
+# Colours
+RED='\e[0;31m'
+REDB='\e[1;31;5m'
+GREEN='\e[1;92m'
+YELLOW='\e[1;33m'
+NC='\e[0m' # No Color
+
+install_languages(){
+
+    echo -e "${YELLOW}Install languages...${NC}"
+
+    mkdir -p $DATA_TMP_DIR/langBundles/
+    mkdir -p $DATA_TMP_DIR/langTmp/sources/{pt_BR,All}
+
+    echo -e "${YELLOW}Download Portugues...${NC}"
+    cd $DATA_TMP_DIR/langTmp/sources/pt_BR/
+    rm -rf *
+    wget https://github.com/RNP-dadosabertos/dataverse-language-packs/archive/refs/heads/develop.zip
+    unzip develop.zip
+    
+    echo -e "${YELLOW}Download other languages...${NC}"
+    cd $DATA_TMP_DIR/langTmp/sources/All/
+    rm -rf *
+    wget https://github.com/GlobalDataverseCommunityConsortium/dataverse-language-packs/archive/refs/heads/develop.zip
+    unzip develop.zip
+
+    echo -e "${YELLOW}Copying data...${NC}"
+    rm -rf $DATA_TMP_DIR/langTmp/*.properties
+    rm -rf $DATA_TMP_DIR/langTmp/*.zip
+
+    echo -e "${YELLOW}Copy files = us--en_US...${NC}"
+    cp $DATA_TMP_DIR/langTmp/sources/All/dataverse-language-packs-develop/en_US/*.properties $DATA_TMP_DIR/langTmp/
+    for f in *.properties; do mv -- "$f" "${f%.properties}_us.properties"; done
+
+    echo -e "${YELLOW}Copy default files...${NC}"
+    cp $DATA_TMP_DIR/langTmp/sources/pt_BR/dataverse-language-packs-develop/pt_BR/*.properties $DATA_TMP_DIR/langTmp/ 
+    for f in *_br.properties; do mv "$f" "$(echo "$f" | sed s/_br/_en/)"; done
+
+    echo -e "${YELLOW}Copy files = br--pt_BR...${NC}"
+    cp $DATA_TMP_DIR/langTmp/sources/pt_BR/dataverse-language-packs-develop/pt_BR/*.properties $DATA_TMP_DIR/langTmp/
+
+
+    echo -e "${YELLOW}Copy files = fr--fr_FR...${NC}"
+    cp $DATA_TMP_DIR/langTmp/sources/All/dataverse-language-packs-develop/fr_FR/*.properties $DATA_TMP_DIR/langTmp/
+
+    echo -e "${YELLOW}Copy files = es--es_ES...${NC}"
+    cp $DATA_TMP_DIR/langTmp/sources/All/dataverse-language-packs-develop/es_ES/*.properties $DATA_TMP_DIR/langTmp/
+
+
+    echo -e "${YELLOW}Preparing ZIP FILE...${NC}"
+    cd $DATA_TMP_DIR/langTmp/
+    rm -rf *.zip
+    zip languages.zip *.properties
+    #export PAYARA=/usr/local/payara5/glassfish
+    #$PAYARA/bin/asadmin create-jvm-options '-Ddataverse.lang.directory=$DATA_TMP_DIR/langBundles'
+    #$PAYARA/bin/asadmin stop-domain
+    #$PAYARA/bin/asadmin start-domain
+    curl http://localhost:8080/api/admin/datasetfield/loadpropertyfiles -X POST --upload-file languages.zip -H "Content-Type:application/zip"
+
+    echo -e "${YELLOW}Defining Dataverse languages and extensions...${NC}"
+
+    curl http://localhost:8080/api/admin/settings/:Languages -X PUT -d '[{"locale":"en","title":"Idioma Padrão"}, {"locale":"us","title":"English"}, {"locale":"es","title":"Español"}, {"locale":"fr","title":"Français"}, {"locale":"br","title":"Português"}]'
+
+    
+
+    sudo -u dataverse $PAYARA/bin/asadmin stop-domain domain1
+    sudo -u dataverse $PAYARA/bin/asadmin start-domain domain1
+    systemctl restart nginx
+
+
+}
+
+
+main(){
+    install_languages
+}
+
+
+
+main
+
+
+
+
+
